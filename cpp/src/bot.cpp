@@ -1,5 +1,5 @@
 #include "./bot.hpp"
-#include <algorithm>
+#include <bits/stdc++.h>
 
 #ifdef RANGES_SUPPORT
 #undef RANGES_SUPPORT
@@ -10,15 +10,17 @@
 #include <ranges>
 #endif
 
+using namespace std;
+
 // Internal
-std::ostream &operator<<(std::ostream &os, Card const &card)
+ ostream &operator<<(ostream &os, Card const &card)
 {
-    return os << Card::ToStr(card) << std::endl;
+    return os << Card::ToStr(card) <<  endl;
 }
 
-std::ostream &operator<<(std::ostream &os, PlayPayload const &payload)
+ ostream &operator<<( ostream &os, PlayPayload const &payload)
 {
-    os << "Player ID : " << payload.player_id << std::endl;
+    os << "Player ID : " << payload.player_id <<  endl;
     os << "Player IDs : ";
     for (auto const &player : payload.player_ids)
         os << player << "    ";
@@ -35,7 +37,7 @@ std::ostream &operator<<(std::ostream &os, PlayPayload const &payload)
     for (auto const &entry : payload.bid_history)
     {
         os << "player    : " << entry.player_id << "\n"
-           << "Bid value : " << entry.bid_value << std::endl;
+           << "Bid value : " << entry.bid_value <<  endl;
     }
 
     // Hand history
@@ -46,7 +48,7 @@ std::ostream &operator<<(std::ostream &os, PlayPayload const &payload)
         os << "\nCards Played : ";
         for (auto card : x.card)
             os << card << "   ";
-        os << std::endl;
+        os <<  endl;
     }
     return os;
 }
@@ -70,26 +72,82 @@ void InitGameInstance()
 // Logic of your code should go inside respective functions
 //
 
-Suit GameState::ChooseTrump(PlayerID myid, std::vector<PlayerID> player_ids, std::vector<Card> mycards,
-                            int32_t time_remaining, std::vector<BidEntry> bid_history)
-{
-    return Suit(mycards[3].suit);
+ // CLUBS = 0, DIAMONDS, HEARTS, SPADES
+pair<int,Suit> evaluate(vector<Card> mycards){
+    int total[4]={0};
+    for(auto card : mycards){
+        total[card.suit]++;
+    }
+    int maxi=0;
+    Suit suit;
+    for(int i=0;i<4;i++){
+        if(total[i]>maxi){
+            maxi=total[i];
+            suit=Suit(i);
+        }
+    }
+    return {maxi,suit};
 }
 
-int GameState::Bid(PlayerID myid, std::vector<PlayerID> player_ids, std::vector<Card> mycards, int32_t time_remaining,
-                   std::vector<BidEntry> bid_history, BidState const &bid_state)
+int place_bid(PlayerID myid, vector<BidEntry> bid_history, BidState const &bid_state, pair<int,Suit> maximum){
+    int amount=0;
+    if(myid == bid_state.defender.player_id){
+        amount = bid_state.challenger.bid_value;
+    }
+    else{
+        amount = bid_state.defender.bid_value+1;
+    }
+    // cout<<bid_state.defender.player_id<<" "<<bid_state.challenger.player_id<<endl;
+    for(auto entry : bid_history){
+        amount= max(amount, entry.bid_value);
+    }
+    if(maximum.first==1){
+        return 0;
+    }
+    if(maximum.first==2){
+        if(amount<= 17){
+            return max(amount,16);
+        }
+        else 
+            return 0;
+    }
+    if(maximum.first==3){
+        if(amount<= 18){
+            return max(amount,16);
+        }
+        else 
+            return 0;
+    }
+    if(maximum.first==4){
+        if(amount<= 19){
+            return max(amount,16);
+        }
+        else 
+            return 0;
+    }
+}
+
+Suit GameState::ChooseTrump(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> mycards,
+                            int32_t time_remaining,  vector<BidEntry> bid_history)
+{
+    return evaluate(mycards).second;
+}
+
+int GameState::Bid(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> mycards, int32_t time_remaining,
+                    vector<BidEntry> bid_history, BidState const &bid_state)
 {
     // Either bid or pass
-    if (bid_history.empty())
-        return 16;
-    return 0;
+    pair<int,Suit> maximum = evaluate(mycards);
+    // cout<<maximum.first<<" "<<maximum.second<<endl;
+    return place_bid(myid, bid_history, bid_state, maximum);
+
 }
 
 PlayAction GameState::Play(PlayPayload payload)
 {
-    std::cout << "Payload Received and parsed: \n" << payload << std::endl;
+     cout << "Payload Received and parsed: \n" << payload <<  endl;
 
-    if (std::holds_alternative<PlayPayload::RevealedObject>(payload.trumpRevealed)) // or just dump variants and use tagged unions
+    if ( holds_alternative<PlayPayload::RevealedObject>(payload.trumpRevealed)) // or just dump variants and use tagged unions
     {
         // Trump revealed code goes here
     }
@@ -108,10 +166,10 @@ PlayAction GameState::Play(PlayPayload payload)
 
     auto same_suit_filter = [=](Card card) { return card.suit == lead_suit; };
 #if defined(RANGES_SUPPORT)
-    auto same_suit_cards = std::views::filter(payload.cards, same_suit_filter);
+    auto same_suit_cards =  views::filter(payload.cards, same_suit_filter);
 #else
-    std::vector<Card> same_suit_cards;
-    std::copy_if(payload.cards.begin(), payload.cards.end(), std::back_inserter(same_suit_cards), same_suit_filter);
+     vector<Card> same_suit_cards;
+     copy_if(payload.cards.begin(), payload.cards.end(),  back_inserter(same_suit_cards), same_suit_filter);
 #endif
     if (same_suit_cards.empty())
     {

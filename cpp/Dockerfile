@@ -4,8 +4,8 @@ WORKDIR client
 
 RUN mkdir ./src
 RUN mkdir ./include 
-ADD ./src/* ./src
-ADD ./include/* ./include
+ADD ./src/* ./src/
+ADD ./include/* ./include/
 
 RUN apk update 
 RUN apk add g++
