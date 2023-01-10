@@ -7,6 +7,6 @@ int main(){
         B,
         C
     };
-    alphabet l = alphabet(2);
+    alphabet l = A;
     cout<<l+1<<endl; 
 }
