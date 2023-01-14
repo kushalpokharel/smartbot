@@ -2,11 +2,7 @@
 using namespace std;
 
 int main(){
-    enum alphabet{
-        A,
-        B,
-        C
-    };
-    alphabet l = A;
-    cout<<l+1<<endl; 
+    string a = "abc";
+    string b = "abc";
+    cout << a==b;
 }

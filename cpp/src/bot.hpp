@@ -249,6 +249,8 @@ struct PlayAction
 
     Action action = PlayCard;
     Card   played_card;
+    PlayAction()=default;
+    PlayAction(Action action, Card card) : action(action), played_card(card){}
 };
 
 struct GameState

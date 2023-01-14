@@ -1,4 +1,5 @@
 #include "./bot.hpp"
+#include "./Utility.hpp"
 #include <bits/stdc++.h>
 
 #ifdef RANGES_SUPPORT
@@ -143,95 +144,35 @@ int GameState::Bid(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> my
 
 }
 
+void status(PlayPayload payload){
+    // aile samma nakheleko taas haru -> vector<Cards> 
+    // kun player sanga kun suit chhaina -> vector<vector<bool>> -> 4*4
+
+}
+
+void distributeCard(vector<Card> remaining, vector<vector<bool>> suitPresent ){
+    // harek player lai randomly shuffle garna paryo taas 
+
+}
+
 PlayAction GameState::Play(PlayPayload payload)
 {
-     cout << "Payload Received and parsed: \n" << payload <<  endl;
-    //  cout<<"trump revealed "<<get<bool>(payload.trumpRevealed)<<endl;
-     PlayAction p_action;
-    if ( holds_alternative<PlayPayload::RevealedObject>(payload.trumpRevealed)) // or just dump variants and use tagged unions
-    {
-        
-        // Trump revealed code goes here
-        auto trump = get<PlayPayload::RevealedObject>(payload.trumpRevealed);
-        cout<<"trump hand "<< trump.hand<<" "<<payload.hand_history.size()<<endl;
-        if(trump.hand == payload.hand_history.size()+1 && trump.player_id == payload.player_id){
-            cout<<"here 0"<<endl;
-            p_action.action = PlayAction::PlayCard;
-            Suit lead_suit        = get<Suit>(payload.trumpSuit);
-                auto same_suit_filter = [=](Card card) { return card.suit == lead_suit; };
-            #if defined(RANGES_SUPPORT)
-                auto same_suit_cards =  views::filter(payload.cards, same_suit_filter);
-            #else
-                vector<Card> same_suit_cards;
-                copy_if(payload.cards.begin(), payload.cards.end(),  back_inserter(same_suit_cards), same_suit_filter);
-            #endif
-            if (same_suit_cards.empty())
-            {
-                p_action.played_card = payload.cards[0];
-                return p_action;
-            }
-            // Play card of same suit if available
-            p_action.played_card = *same_suit_cards.begin();
-            return p_action;
-        }
-        else{
-            cout<<"here 1"<<endl;
-            p_action.action = PlayAction::PlayCard;
 
-            if (payload.played.empty())
-            {
-                // Cards in player hands
-                p_action.played_card = payload.cards[0];
-                return p_action;
+    auto playableActions = playableAction(payload.hand_history.size()+1, payload.player_id,
+                            payload.played, payload.trumpRevealed, payload.trumpSuit, payload.cards ); 
+    cout<<payload.hand_history.size()<<endl;
+    if(payload.hand_history.size()==7){
+        vector<vector<Card>> shuffledPlayersCard(4,vector<Card>());
+        shuffle(payload.hand_history, payload.cards, payload.played, payload.player_id, payload.player_ids, shuffledPlayersCard);
+        for(int i=0;i<shuffledPlayersCard.size();i++){
+            cout<<"player "<<payload.player_ids[i]<<endl;
+            for(int j=0;j<shuffledPlayersCard[i].size();j++){
+                cout<<shuffledPlayersCard[i][j]<<" ";
             }
-
-            Suit lead_suit        = payload.played[0].suit;
-
-            auto same_suit_filter = [=](Card card) { return card.suit == lead_suit; };
-        #if defined(RANGES_SUPPORT)
-            auto same_suit_cards =  views::filter(payload.cards, same_suit_filter);
-        #else
-            vector<Card> same_suit_cards;
-            copy_if(payload.cards.begin(), payload.cards.end(),  back_inserter(same_suit_cards), same_suit_filter);
-        #endif
-            if (same_suit_cards.empty())
-            {
-                p_action.played_card = payload.cards[0];
-                return p_action;
-            }
-            // Play card of same suit if available
-            p_action.played_card = *same_suit_cards.begin();
-            return p_action;
-            
+            cout<<endl;
         }
     }
 
-    p_action.action = PlayAction::PlayCard;
-
-    if (payload.played.empty())
-    {
-        // Cards in player hands
-        p_action.played_card = payload.cards[0];
-        return p_action;
-    }
-
-    Suit lead_suit        = payload.played[0].suit;
-
-    auto same_suit_filter = [=](Card card) { return card.suit == lead_suit; };
-#if defined(RANGES_SUPPORT)
-    auto same_suit_cards =  views::filter(payload.cards, same_suit_filter);
-#else
-     vector<Card> same_suit_cards;
-     copy_if(payload.cards.begin(), payload.cards.end(),  back_inserter(same_suit_cards), same_suit_filter);
-#endif
-    if (same_suit_cards.empty())
-    {
-        p_action.action = PlayAction::RevealTrump;
-        p_action.played_card = payload.cards[0];
-        return p_action;
-    }
-    // Play card of same suit if available
-    p_action.played_card = *same_suit_cards.begin();
-    return p_action;
-    // This isn't complete implementation for total gameplay
+    int random = rand()%playableActions.size();
+    return *playableActions[0];
 }
