@@ -1,5 +1,5 @@
 #include "./bot.hpp"
-#include "./Utility.hpp"
+#include "./TreeNode.hpp"
 #include <bits/stdc++.h>
 
 #ifdef RANGES_SUPPORT
@@ -144,35 +144,69 @@ int GameState::Bid(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> my
 
 }
 
-void status(PlayPayload payload){
-    // aile samma nakheleko taas haru -> vector<Cards> 
-    // kun player sanga kun suit chhaina -> vector<vector<bool>> -> 4*4
-
+void mcts(TreeNode* root){
+    int startTime = time(0);
+    int iter = 0;
+    while(iter<50){
+        iter++;
+        TreeNode* selected = root->select();
+        selected->simulate();
+    }
 }
 
-void distributeCard(vector<Card> remaining, vector<vector<bool>> suitPresent ){
-    // harek player lai randomly shuffle garna paryo taas 
-
+PlayAction* pimc(PlayPayload& payload){
+    // cout<<"here"<<endl;
+    auto playableActions = playableAction(payload.hand_history.size()+1, payload.player_id,
+                            payload.played, payload.trumpRevealed, payload.trumpSuit, payload.cards ); 
+    
+    int startTime = time(0);
+    int iter = 0;
+    vector<double> preferred_move(playableActions.size(),0.0);
+    while(iter<50){
+        iter++;
+        vector<vector<Card>> shuffledPlayersCard(4,vector<Card>());
+        shuffle(payload.hand_history, payload.cards, payload.played, payload.player_id, payload.player_ids, shuffledPlayersCard);
+        TreeNode* root = new TreeNode();    
+        root->currentPlayer = findPlayerIndex(payload.player_id, payload.player_ids);
+        root->currentHand = payload.played;
+        root->allCards = shuffledPlayersCard;
+        root->trumpSuit = payload.trumpSuit;
+        root->trumpRevealed = payload.trumpRevealed;
+        root->roundNumber = payload.hand_history.size()+1;
+        root->visitCount = 0;
+        root->score = vector<int>(4,0);
+        root->points = vector<int>(4,0);
+        for(int i=0;i<4;i++){
+            for(int j=0;j<2;j++){
+                if(payload.teams[j].players[0] == payload.player_ids[i] || payload.teams[j].players[1] == payload.player_ids[i]){
+                    root->points[i] = payload.teams[j].won;
+                }
+            }
+        }
+        root->playerIds = payload.player_ids;
+        for(auto entry : payload.bid_history){
+            if(entry.bid_value > 0){
+                root->bidAmount = entry.bid_value;
+                root->bidPlayer = findPlayerIndex(entry.player_id, payload.player_ids);
+            }
+        }
+        mcts(root);
+        for(int i=0;i<playableActions.size();i++){
+            preferred_move[i] += root->children[i]->visitCount/(double)root->visitCount ;
+        }
+    }
+    int bestMove = 0;
+    for(int i=1;i<preferred_move.size();i++){
+        if(preferred_move[i] > preferred_move[bestMove]){
+            bestMove = i;
+        }
+    }
+    return playableActions[bestMove];   
 }
+
 
 PlayAction GameState::Play(PlayPayload payload)
 {
 
-    auto playableActions = playableAction(payload.hand_history.size()+1, payload.player_id,
-                            payload.played, payload.trumpRevealed, payload.trumpSuit, payload.cards ); 
-    cout<<payload.hand_history.size()<<endl;
-    if(payload.hand_history.size()==7){
-        vector<vector<Card>> shuffledPlayersCard(4,vector<Card>());
-        shuffle(payload.hand_history, payload.cards, payload.played, payload.player_id, payload.player_ids, shuffledPlayersCard);
-        for(int i=0;i<shuffledPlayersCard.size();i++){
-            cout<<"player "<<payload.player_ids[i]<<endl;
-            for(int j=0;j<shuffledPlayersCard[i].size();j++){
-                cout<<shuffledPlayersCard[i][j]<<" ";
-            }
-            cout<<endl;
-        }
-    }
-
-    int random = rand()%playableActions.size();
-    return *playableActions[0];
+    return *pimc(payload);
 }

@@ -1,8 +1,8 @@
 #include<bits/stdc++.h>
+#include<chrono>
 using namespace std;
 
 int main(){
-    string a = "abc";
-    string b = "abc";
-    cout << a==b;
+    uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    std::cout << ms << " milliseconds since the Epoch\n";
 }

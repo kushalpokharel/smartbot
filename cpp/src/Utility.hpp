@@ -169,81 +169,108 @@ int findPlayerIndex(string player_id, vector<string>& playerIds)
 void shuffle(vector<PlayPayload::HandHistoryEntry>& hand_history, vector<Card>& myCards, 
                     vector<Card>& currentHand, string currentPlayer, vector<string>& playerIds, vector<vector<Card>>& shuffledPlayersCard){
             
-            vector<vector<bool>> playerHasSuit(4, vector<bool>(4, true));
-            vector<Card> remainingCards;
-            vector<Card> shuffled;
-            for(int i=7;i<=14;i++){
-                for(int j=0;j<4;j++){
-                    remainingCards.push_back(Card(Rank(i), Suit(j)));
-                }
-            }
+    vector<vector<bool>> playerHasSuit(4, vector<bool>(4, true));
+    vector<Card> remainingCards;
+    vector<Card> shuffled;
+    for(int i=7;i<=14;i++){
+        for(int j=0;j<4;j++){
+            remainingCards.push_back(Card(Rank(i), Suit(j)));
+        }
+    }
 
-            for(auto h: hand_history){
-                int start = findPlayerIndex(h.initiator, playerIds);
-                Suit lead_suit = h.card[0].suit;
-                for(int i=0;i<4;i++){
-                    int current_turn = (start+i)%4;
-                    auto itr = find(remainingCards.begin(),remainingCards.end(), h.card[i]);
-                    remainingCards.erase(itr);
-                    if(h.card[i].suit != lead_suit){
-                        playerHasSuit[current_turn][lead_suit] = false;
-                    }
-                }
+    for(auto h: hand_history){
+        int start = findPlayerIndex(h.initiator, playerIds);
+        Suit lead_suit = h.card[0].suit;
+        for(int i=0;i<4;i++){
+            int current_turn = (start+i)%4;
+            auto itr = find(remainingCards.begin(),remainingCards.end(), h.card[i]);
+            remainingCards.erase(itr);
+            if(h.card[i].suit != lead_suit){
+                playerHasSuit[current_turn][lead_suit] = false;
             }
-            if(!currentHand.empty()){
-                int start = (findPlayerIndex(currentPlayer, playerIds) - currentHand.size()+4)%4;
-                Suit lead_suit = currentHand[0].suit;
-                for(int i=0;i<currentHand.size();i++){
-                    int current_turn = (start+i)%4;
-                    auto itr = find(remainingCards.begin(),remainingCards.end(), currentHand[i]);
-                    remainingCards.erase(itr);
-                    if(currentHand[i].suit != lead_suit){
-                        playerHasSuit[current_turn][lead_suit] = false;
-                    }
-                }
+        }
+    }
+    if(!currentHand.empty()){
+        int start = (findPlayerIndex(currentPlayer, playerIds) - currentHand.size()+4)%4;
+        Suit lead_suit = currentHand[0].suit;
+        for(int i=0;i<currentHand.size();i++){
+            int current_turn = (start+i)%4;
+            auto itr = find(remainingCards.begin(),remainingCards.end(), currentHand[i]);
+            remainingCards.erase(itr);
+            if(currentHand[i].suit != lead_suit){
+                playerHasSuit[current_turn][lead_suit] = false;
             }
-           
-            for(auto c: myCards){
-                auto itr = find(remainingCards.begin(),remainingCards.end(), c);
-                    remainingCards.erase(itr);
-                shuffled.push_back(c);
-            }
-            cout<<hand_history.size()+1<<" "<<remainingCards.size()<<endl;
-            while(!remainingCards.empty()){
-                srand(time(0));
-                int random = rand()%remainingCards.size();
-                Card c = remainingCards[random];
-                remainingCards.erase(remainingCards.begin()+random);
-                shuffled.push_back(c);
-            }
-            
-            int my_index = findPlayerIndex(currentPlayer, playerIds);
-            int remaining_number = myCards.size();
-            int index = 0;
-            for(int i=0;i<4;i++){
-                if(i+currentHand.size() == 4){
-                    remaining_number--;
-                }
-                for(int j=0;j<remaining_number;j++){
-                    shuffledPlayersCard[(my_index+i)%4].push_back(shuffled[index++]);
-                }
-            }
+        }
+    }
+    
+    for(auto c: myCards){
+        auto itr = find(remainingCards.begin(),remainingCards.end(), c);
+            remainingCards.erase(itr);
+        shuffled.push_back(c);
+    }
+    cout<<hand_history.size()+1<<" "<<remainingCards.size()<<endl;
+    while(!remainingCards.empty()){
+        srand(time(0));
+        int random = rand()%remainingCards.size();
+        Card c = remainingCards[random];
+        remainingCards.erase(remainingCards.begin()+random);
+        shuffled.push_back(c);
+    }
+    
+    int my_index = findPlayerIndex(currentPlayer, playerIds);
+    int remaining_number = myCards.size();
+    int index = 0;
+    for(int i=0;i<4;i++){
+        if(i+currentHand.size() == 4){
+            remaining_number--;
+        }
+        for(int j=0;j<remaining_number;j++){
+            shuffledPlayersCard[(my_index+i)%4].push_back(shuffled[index++]);
+        }
+    }
+
+    // for(int i=(my_index+1)%4;i!=my_index;i=(i+1)%4){
+    //     for(int j=0;j<shuffledPlayersCard[i].size();j++){
+    //         if(!playerHasSuit[i][shuffledPlayersCard[i][j].suit]){
+    //             bool found = false; 
+    //             for(int k=0;k<4;k++){
+    //                 if(k==my_index || k==i){
+    //                     continue;
+    //                 }
+    //                 if(!playerHasSuit[k][shuffledPlayersCard[i][j].suit]){
+    //                     continue;
+    //                 }
+    //                 for(int l=0;l<shuffledPlayersCard[k].size();l++){
+    //                     if(playerHasSuit[i][shuffledPlayersCard[k][l].suit]){
+    //                         Card temp = shuffledPlayersCard[i][j];
+    //                         shuffledPlayersCard[i][j] = shuffledPlayersCard[k][l];
+    //                         shuffledPlayersCard[k][l] = temp;
+    //                         found=true;
+    //                         break;
+    //                     }
+    //                 }
+    //                 if(found)
+    //                     break;
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 int returnWinner(vector<Card>& currentHand, int startPlayer, vector<string>& playerIds,
-                  ,variant<bool,PlayPayload::RevealedObject> trumpRevealed, variant<bool,Suit> trumpSuit){
+                  variant<bool,PlayPayload::RevealedObject> trumpRevealed, variant<bool,Suit> trumpSuit){
     
     Suit lead_suit = currentHand[0].suit;
     int max_rank = currentHand[0].rank;
     int max_index = 0;
     for(int i=1;i<currentHand.size();i++){
         if(currentHand[i].suit == lead_suit){
-            if( CardValue(currentHand[i].rank) > CardValue(max_rank))
+            if( CardValue(currentHand[i].rank) > CardValue(Rank(max_rank)))
             {
                 max_rank=currentHand[i].rank;
                 max_index=i;
             }
-            else if(CardValue(currentHand[i].rank) == CardValue(max_rank))
+            else if(CardValue(currentHand[i].rank) == CardValue(Rank(max_rank)))
             {
                 if(currentHand[i].rank > max_rank)
                 {
@@ -265,12 +292,12 @@ int returnWinner(vector<Card>& currentHand, int startPlayer, vector<string>& pla
                     max_index=i;
                 }
                 else{
-                    if( CardValue(currentHand[i].rank) > CardValue(max_rank))
+                    if( CardValue(currentHand[i].rank) > CardValue(Rank(max_rank)))
                     {
                         max_rank=currentHand[i].rank;
                         max_index=i;
                     }
-                    else if(CardValue(currentHand[i].rank) == CardValue(max_rank))
+                    else if(CardValue(currentHand[i].rank) == CardValue(Rank(max_rank)))
                     {
                         if(currentHand[i].rank > max_rank)
                         {
