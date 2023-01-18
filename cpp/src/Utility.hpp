@@ -12,8 +12,18 @@
 
 using namespace std;
 
-vector<PlayAction*> playableAction(int roundNumber, string cur_player, vector<Card> &currentHand, 
-    variant<bool,PlayPayload::RevealedObject> trumpRevealed, variant<bool,Suit> trumpSuit,  vector<Card> &myCards)
+vector<int> getPlayed(vector<PlayPayload::HandHistoryEntry>& hand_history){
+    vector<int> played(4,0);
+    for(auto x: hand_history){
+        for(auto card: x.card){
+            played[card.suit]++;
+        }
+    }
+    return played;
+}
+
+vector<PlayAction*> playableAction(int roundNumber, string cur_player, vector<Card>& currentHand, 
+    variant<bool,PlayPayload::RevealedObject> trumpRevealed, variant<bool,Suit> trumpSuit,  vector<Card>& myCards, vector<int>& isSuitPlayed)
 {
     // Returns what actions playerIdx can play from this position 
 
@@ -22,6 +32,26 @@ vector<PlayAction*> playableAction(int roundNumber, string cur_player, vector<Ca
     if(currentHand.size()==0)
     {
         // When you are starting the hand you can throw all cards
+        for(int i=0;i<4;i++){
+            if(isSuitPlayed[i]==0){
+                Suit lead_suit = Suit(i);
+                auto same_suit_filter = [=](Card card) { return card.suit == lead_suit && CardValue(card.rank)==3; };
+
+                #if defined(RANGES_SUPPORT)
+                    auto same_suit_cards =  views::filter(myCards, same_suit_filter);
+                #else
+                    vector<Card> same_suit_cards;
+                    copy_if(myCards.begin(), myCards.end(),  back_inserter(same_suit_cards), same_suit_filter);
+                #endif
+
+                if(!same_suit_cards.empty())
+                {   
+                    possibleActions.push_back(new PlayAction(PlayAction::PlayCard, same_suit_cards[0])); 
+                    return possibleActions;
+                }
+
+            }
+        }
         for(Card c: myCards)
         {
             possibleActions.push_back(new PlayAction(PlayAction::PlayCard, c)); 
@@ -208,7 +238,7 @@ void shuffle(vector<PlayPayload::HandHistoryEntry>& hand_history, vector<Card>& 
             remainingCards.erase(itr);
         shuffled.push_back(c);
     }
-    cout<<hand_history.size()+1<<" "<<remainingCards.size()<<endl;
+    // cout<<hand_history.size()+1<<" "<<remainingCards.size()<<endl;
     while(!remainingCards.empty()){
         srand(time(0));
         int random = rand()%remainingCards.size();

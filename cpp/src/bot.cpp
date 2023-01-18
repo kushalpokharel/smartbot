@@ -102,30 +102,24 @@ int place_bid(PlayerID myid, vector<BidEntry> bid_history, BidState const &bid_s
     for(auto entry : bid_history){
         amount= max(amount, entry.bid_value);
     }
-    if(maximum.first==1){
+    if(maximum.first<=1){
         return 0;
     }
-    if(maximum.first==2){
-        if(amount<= 17){
+    if(maximum.first<=2){
+        if(amount<= 16){
             return max(amount,16);
         }
         else 
             return 0;
     }
-    if(maximum.first==3){
+    if(maximum.first<=4){
         if(amount<= 18){
             return max(amount,16);
         }
         else 
             return 0;
     }
-    if(maximum.first==4){
-        if(amount<= 19){
-            return max(amount,16);
-        }
-        else 
-            return 0;
-    }
+    return 0;
 }
 
 Suit GameState::ChooseTrump(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> mycards,
@@ -144,29 +138,35 @@ int GameState::Bid(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> my
 
 }
 
-void mcts(TreeNode* root){
+void mcts(TreeNode* root, int bound){
+    // cout<<"bid " <<root->bidAmount<<endl;
     int startTime = time(0);
     int iter = 0;
-    while(iter<50){
+    while(iter<bound){
         iter++;
         TreeNode* selected = root->select();
+        selected->expand();
         selected->simulate();
     }
+    // cout<<root->children.size()<<endl;
 }
 
 PlayAction* pimc(PlayPayload& payload){
     // cout<<"here"<<endl;
-    auto playableActions = playableAction(payload.hand_history.size()+1, payload.player_id,
-                            payload.played, payload.trumpRevealed, payload.trumpSuit, payload.cards ); 
+    vector<PlayAction*> playableActions;
+    vector<int> isSuitPlayed = getPlayed(payload.hand_history);
+    playableActions = playableAction(payload.hand_history.size()+1, payload.player_id,
+                            payload.played, payload.trumpRevealed, payload.trumpSuit, payload.cards, isSuitPlayed ); 
     
     int startTime = time(0);
     int iter = 0;
     vector<double> preferred_move(playableActions.size(),0.0);
-    while(iter<50){
+    while(iter<3){
         iter++;
         vector<vector<Card>> shuffledPlayersCard(4,vector<Card>());
         shuffle(payload.hand_history, payload.cards, payload.played, payload.player_id, payload.player_ids, shuffledPlayersCard);
-        TreeNode* root = new TreeNode();    
+        TreeNode* root = new TreeNode();  
+        root->parent = NULL;  
         root->currentPlayer = findPlayerIndex(payload.player_id, payload.player_ids);
         root->currentHand = payload.played;
         root->allCards = shuffledPlayersCard;
@@ -190,7 +190,13 @@ PlayAction* pimc(PlayPayload& payload){
                 root->bidPlayer = findPlayerIndex(entry.player_id, payload.player_ids);
             }
         }
-        mcts(root);
+        // cout<<"before"<<endl;
+        int siz = 3*playableActions.size();
+        int bound = max(siz,15);
+        mcts(root, bound);
+        // cout<<"p: "<<playableActions.size()<<endl;
+        // cout<<"r: "<<root->children.size()<<endl;
+        // cout<<"visit count" << root->visitCount<<endl;
         for(int i=0;i<playableActions.size();i++){
             preferred_move[i] += root->children[i]->visitCount/(double)root->visitCount ;
         }
@@ -201,12 +207,14 @@ PlayAction* pimc(PlayPayload& payload){
             bestMove = i;
         }
     }
+    // cout<<bestMove<<endl;
     return playableActions[bestMove];   
 }
 
 
 PlayAction GameState::Play(PlayPayload payload)
 {
-
-    return *pimc(payload);
+    auto playcard = pimc(payload);
+    return *playcard;
+    // return *(pimc(payload));
 }

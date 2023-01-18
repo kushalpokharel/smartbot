@@ -21,7 +21,9 @@ public:
     int bidAmount;
     int bidPlayer;
 
-    TreeNode(){}
+    TreeNode(){
+        allCards = vector<vector<Card>> (4, vector<Card>());
+    }
 
 
     TreeNode(TreeNode* parent, int currentPlayer, vector<Card> currentHand, vector<vector<Card>> allCards, variant<bool, Suit> trumpSuit, 
@@ -37,10 +39,12 @@ public:
         this->visitCount = 0;
         this->score = vector<int>(4,0);
         this->points = points;
+        this->allCards = vector<vector<Card>> (4, vector<Card>());
     }
 
     TreeNode* select(){
         TreeNode* selected = this;
+        // cout<<"inside select "<<endl;
         while(selected->children.size() != 0){
             double bestScore = -1;
             for(auto child : selected->children){
@@ -51,19 +55,26 @@ public:
                 }
             }
         }
+        // cout<<"exiting select "<<endl;
         return selected;
     }
 
-    TreeNode* expand(){
+    void expand(){
+        // cout<<"inside expand "<<endl;
         createChildren();
         srand(time(0));
-        return children[rand() % children.size()];
+        // cout<<"exiting expand "<<endl;
+        // if(children.size()==0)
+            // cout<<"children size is 0"<<endl;
+        // return children[rand() % children.size()];
     }
 
     void createChildren(){
+        vector<int> samesuit(4,1);
         vector<PlayAction*> possibleMoves = playableAction(roundNumber, playerIds[currentPlayer], currentHand, 
-                                                        trumpRevealed, trumpSuit, allCards[currentPlayer] );
+                                                        trumpRevealed, trumpSuit, allCards[currentPlayer], samesuit );
         for(auto move : possibleMoves){
+            // cout<<"here"<<endl;
             TreeNode* child = new TreeNode();
             child->parent = this;
             child->currentPlayer = currentPlayer;
@@ -82,6 +93,7 @@ public:
                 child->points.push_back(i);
             }
             for(int i=0;i<4;i++){
+                
                 for(Card c: allCards[i]){
                     child->allCards[i].push_back(c);
                 }
@@ -99,7 +111,7 @@ public:
                     child->currentHand.clear();
                 }
                 
-                child->allCards[currentPlayer].erase(find(allCards[currentPlayer].begin(), allCards[currentPlayer].end(), move->played_card));
+                child->allCards[currentPlayer].erase(find(child->allCards[currentPlayer].begin(), child->allCards[currentPlayer].end(), move->played_card));
             }
             else if(move->action == PlayAction::RevealTrump){
                 if(!holds_alternative<Suit>(trumpSuit)){
@@ -116,16 +128,20 @@ public:
     //simulate the game from this node
 
     void simulate(){
+        // cout<<"inside simulate "<<endl;
         TreeNode* currentNode = this;
         while(currentNode->children.size() != 0){
+            // cout<<"round number"<<currentNode->roundNumber<<endl;
             srand(time(0));
             currentNode = currentNode->children[rand() % currentNode->children.size()];
             currentNode->createChildren();
         }
+        // cout<<"exiting simulate "<<endl;
         currentNode->backPropagate();
     }
 
     void backPropagate(){
+        // cout<<"inside backpropagate "<<endl;
         TreeNode* currentNode = this;
         vector<int>score(4,1);
         if(holds_alternative<PlayPayload::RevealedObject>(trumpRevealed)){
@@ -145,10 +161,11 @@ public:
             }
             currentNode = currentNode->parent;
         }
-
+        // cout<<"exiting backpropagate "<<endl;
     }
 
     double calcUCT(){
+
         if(visitCount == 0){
             return 100000000;
         }
