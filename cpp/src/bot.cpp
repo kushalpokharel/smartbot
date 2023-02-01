@@ -119,7 +119,7 @@ int place_bid(PlayerID myid, vector<BidEntry> bid_history, BidState const &bid_s
         else 
             return 0;
     }
-    return 0;
+    return 0+0;
 }
 
 Suit GameState::ChooseTrump(PlayerID myid,  vector<PlayerID> player_ids,  vector<Card> mycards,
@@ -192,7 +192,7 @@ PlayAction* pimc(PlayPayload& payload){
         }
         // cout<<"before"<<endl;
         int siz = 3*playableActions.size();
-        int bound = max(siz,15);
+        int bound = max(siz,30);
         mcts(root, bound);
         // cout<<"p: "<<playableActions.size()<<endl;
         // cout<<"r: "<<root->children.size()<<endl;

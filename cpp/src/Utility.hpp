@@ -32,26 +32,26 @@ vector<PlayAction*> playableAction(int roundNumber, string cur_player, vector<Ca
     if(currentHand.size()==0)
     {
         // When you are starting the hand you can throw all cards
-        for(int i=0;i<4;i++){
-            if(isSuitPlayed[i]==0){
-                Suit lead_suit = Suit(i);
-                auto same_suit_filter = [=](Card card) { return card.suit == lead_suit && CardValue(card.rank)==3; };
+        // for(int i=0;i<4;i++){
+        //     if(isSuitPlayed[i]==0){
+        //         Suit lead_suit = Suit(i);
+        //         auto same_suit_filter = [=](Card card) { return card.suit == lead_suit && CardValue(card.rank)==3; };
 
-                #if defined(RANGES_SUPPORT)
-                    auto same_suit_cards =  views::filter(myCards, same_suit_filter);
-                #else
-                    vector<Card> same_suit_cards;
-                    copy_if(myCards.begin(), myCards.end(),  back_inserter(same_suit_cards), same_suit_filter);
-                #endif
+        //         #if defined(RANGES_SUPPORT)
+        //             auto same_suit_cards =  views::filter(myCards, same_suit_filter);
+        //         #else
+        //             vector<Card> same_suit_cards;
+        //             copy_if(myCards.begin(), myCards.end(),  back_inserter(same_suit_cards), same_suit_filter);
+        //         #endif
 
-                if(!same_suit_cards.empty())
-                {   
-                    possibleActions.push_back(new PlayAction(PlayAction::PlayCard, same_suit_cards[0])); 
-                    return possibleActions;
-                }
+        //         if(!same_suit_cards.empty())
+        //         {   
+        //             possibleActions.push_back(new PlayAction(PlayAction::PlayCard, same_suit_cards[0])); 
+        //             return possibleActions;
+        //         }
 
-            }
-        }
+        //     }
+        // }
         for(Card c: myCards)
         {
             possibleActions.push_back(new PlayAction(PlayAction::PlayCard, c)); 

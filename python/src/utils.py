@@ -85,3 +85,56 @@ def pick_winning_card_idx(cards, trump_suit):
             winner = i
 
     return winner
+
+def playableActions(body):
+    roundNumber = body["roundNumber"]
+    currPlayer = body["playerId"]
+    currentHand = body["played"]
+    trumpRevealed = body["trumpRevealed"]
+    trumpSuit = body["trumpSuit"]
+    myCards = body["cards"]
+    
+    possibleActions = []
+    if len(currentHand) == 0:
+        for card in myCards:
+            possibleActions.append({"card":card})
+    
+    else :
+        if not trumpRevealed:
+            lead_suit = currentHand[0][1]
+            same_suit_cards = get_suit_cards(myCards, lead_suit)
+            if len(same_suit_cards) == 0:
+                for card in myCards:
+                    possibleActions.append({"card":card})
+                possibleActions.append({"revealTrump": True})
+
+            else:
+                for card in same_suit_cards:
+                    possibleActions.append({"card":card})
+
+        else:
+            trump = trumpRevealed
+            if trump["hand"] == roundNumber and trump["playerId"] == currPlayer:
+                same_suit_cards = get_suit_cards(myCards, trumpSuit)
+                if len(same_suit_cards) != 0:
+                    toPlay = same_suit_cards[0]
+                    for i in range(1, len(same_suit_cards)):
+                        if CARDS_DICT[same_suit_cards[i][0]]["order"] > CARDS_DICT[toPlay[0]]["order"]:
+                            toPlay = same_suit_cards[i]
+
+                    possibleActions.append({"card": toPlay})
+                else:
+                    for card in myCards:
+                        possibleActions.append({"card":card})
+                    
+            else:
+                lead_suit = currentHand[0][1]
+                same_suit_cards = get_suit_cards(myCards, trumpSuit)
+                if len(same_suit_cards) == 0:
+                    for card in myCards:
+                        possibleActions.append({"card":card})
+                else:
+                    for card in same_suit_cards:
+                        possibleActions.append({"card":card})
+    return possibleActions
+

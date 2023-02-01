@@ -47,13 +47,15 @@ public:
         // cout<<"inside select "<<endl;
         while(selected->children.size() != 0){
             double bestScore = -1;
+            TreeNode* bestChild = nullptr;
             for(auto child : selected->children){
                 double uctValue = child->calcUCT();
                 if(uctValue > bestScore){
                     bestScore = uctValue;
-                    selected = child;
+                    bestChild = child;
                 }
             }
+            selected = bestChild;
         }
         // cout<<"exiting select "<<endl;
         return selected;
@@ -146,12 +148,12 @@ public:
         vector<int>score(4,1);
         if(holds_alternative<PlayPayload::RevealedObject>(trumpRevealed)){
             if(points[bidPlayer] >= bidAmount){
-                score[bidPlayer] = score[(bidPlayer+2)%4] = 2;
+                score[bidPlayer] = score[(bidPlayer+2)%4] = 1000;
                 score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 0;
             }
             else{
                 score[bidPlayer] = score[(bidPlayer+2)%4] = 0;
-                score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 2;
+                score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 1000;
             }
         }
         while(currentNode != NULL){
