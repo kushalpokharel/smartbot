@@ -148,12 +148,12 @@ public:
         vector<int>score(4,1);
         if(holds_alternative<PlayPayload::RevealedObject>(trumpRevealed)){
             if(points[bidPlayer] >= bidAmount){
-                score[bidPlayer] = score[(bidPlayer+2)%4] = 1000;
+                score[bidPlayer] = score[(bidPlayer+2)%4] = 1000000*(points[bidPlayer]-bidAmount+1);
                 score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 0;
             }
             else{
                 score[bidPlayer] = score[(bidPlayer+2)%4] = 0;
-                score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 1000;
+                score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 1000000*(28-points[bidPlayer]+bidAmount);
             }
         }
         while(currentNode != NULL){

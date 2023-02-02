@@ -68,7 +68,7 @@ def is_high(highest_card, compare_card, trump_suit=None):
 
         return high["points"] >= compare["points"] and high["order"] > compare["order"]
 
-    return True
+    return False
 
 
 def pick_winning_card_idx(cards, trump_suit):
@@ -129,7 +129,7 @@ def playableActions(body):
                     
             else:
                 lead_suit = currentHand[0][1]
-                same_suit_cards = get_suit_cards(myCards, trumpSuit)
+                same_suit_cards = get_suit_cards(myCards, lead_suit)
                 if len(same_suit_cards) == 0:
                     for card in myCards:
                         possibleActions.append({"card":card})

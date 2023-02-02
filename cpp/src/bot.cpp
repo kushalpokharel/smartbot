@@ -12,6 +12,7 @@
 #endif
 
 using namespace std;
+using namespace std::chrono;
 
 // Internal
  ostream &operator<<(ostream &os, Card const &card)
@@ -161,7 +162,15 @@ PlayAction* pimc(PlayPayload& payload){
     int startTime = time(0);
     int iter = 0;
     vector<double> preferred_move(playableActions.size(),0.0);
-    while(iter<3){
+    int round = payload.hand_history.size()+1;
+    int pimcbound = 300;
+    if(round>2){
+        pimcbound = 120;
+    }
+    uint64_t start_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    uint64_t current_time = start_time;
+    
+    while(current_time - start_time<pimcbound){
         iter++;
         vector<vector<Card>> shuffledPlayersCard(4,vector<Card>());
         shuffle(payload.hand_history, payload.cards, payload.played, payload.player_id, payload.player_ids, shuffledPlayersCard);
@@ -191,8 +200,10 @@ PlayAction* pimc(PlayPayload& payload){
             }
         }
         // cout<<"before"<<endl;
-        int siz = 3*playableActions.size();
+        int siz = 10*playableActions.size();
         int bound = max(siz,30);
+        // if(bound>30)
+        //     cout<<"bound "<<bound<<endl;
         mcts(root, bound);
         // cout<<"p: "<<playableActions.size()<<endl;
         // cout<<"r: "<<root->children.size()<<endl;
@@ -200,7 +211,9 @@ PlayAction* pimc(PlayPayload& payload){
         for(int i=0;i<playableActions.size();i++){
             preferred_move[i] += root->children[i]->visitCount/(double)root->visitCount ;
         }
+        current_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     }
+    // cout<<"iter pimc " <<iter<<endl;
     int bestMove = 0;
     for(int i=1;i<preferred_move.size();i++){
         if(preferred_move[i] > preferred_move[bestMove]){
