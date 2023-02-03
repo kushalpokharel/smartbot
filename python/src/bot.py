@@ -1,7 +1,7 @@
 from utils import playableActions, get_card_info, get_suit, get_suit_cards, get_partner_idx, pick_winning_card_idx, is_high, index, find
 import random
 import math
-from time import time
+import time
 # pair<int,Suit> evaluate(vector<Card> mycards){
 #     int total[4]={0};
 #     for(auto card : mycards){
@@ -180,10 +180,12 @@ def createChildren(root):
         else:
             if not child["trumpSuit"]:
                 suits = ['S','H', 'D', 'C']
+                random.seed()
                 child["trumpSuit"] = suits[random.randint(0,3)]    
 
-            child["trumpRevealed"] = {"hand": child["roundNumber"], "playerId": child["playerId"]}  
-        child["cards"] = child["allCards"][child["playerId"]]
+            child["trumpRevealed"] = {"hand": child["roundNumber"], "playerId": child["playerIds"][child["playerId"]]}  
+        for card in child["allCards"][child["playerId"]] :
+            child["cards"].append(card)
         tree.append(child)
         tree[root]["children"].append(len(tree)-1)
 
@@ -198,8 +200,8 @@ def backpropagate(root):
             score[bidPlayer] = score[(bidPlayer+2)%4] = 10000000 * (tree[root]["points"][bidPlayer])
             score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = -10000000 * (tree[root]["points"][bidPlayer])
         else:
-            score[bidPlayer] = score[(bidPlayer+2)%4] = - 10000000*(28 - tree[root]["points"][bidPlayer] + 1 )
-            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 10000000*(28 - tree[root]["points"][bidPlayer] + 1 )
+            score[bidPlayer] = score[(bidPlayer+2)%4] = -10000000*(28 - tree[root]["points"][bidPlayer] )
+            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 10000000*(28 - tree[root]["points"][bidPlayer] )
     #print("Score is", score)
     while root != -1:
         tree[root]["visitCount"] += 1
@@ -212,6 +214,7 @@ def simulate(root):
     currentNode = root
     createChildren(root)
     while len(tree[currentNode]["children"])!=0:
+        random.seed()
         currentNode = tree[currentNode]["children"][random.randint(0, len(tree[currentNode]["children"])-1)]
         createChildren(currentNode)
     backpropagate(currentNode)
@@ -274,7 +277,7 @@ def shuffle(body):
                 playerHasSuit[current_turn][total[lead_suit]] = False
     
     if currentHand:
-        start = findPlayerIndex(currentPlayer, playerIds)
+        start = (findPlayerIndex(currentPlayer, playerIds) - len(currentHand)+4)%4
         lead_suit = currentHand[0][1]
         for i in range(len(currentHand)):
             current_turn = (start+i)%4
@@ -287,6 +290,7 @@ def shuffle(body):
         shuffled.append(c)
     
     while remainingCards:
+        random.seed()
         rand = random.randint(0,len(remainingCards)-1)
         c = remainingCards[rand]
         remainingCards.remove(c)
@@ -302,6 +306,30 @@ def shuffle(body):
         for j in range(remaining_number):
             shuffledPlayersCard[(my_index+i)%4].append(shuffled[index])
             index+=1
+    
+    i = (my_index+1)%4
+    while i != my_index:
+        for j in range(len(shuffledPlayersCard[i])):
+            if not playerHasSuit[i][total[shuffledPlayersCard[i][j][1]]]:
+                found = False
+                for k in range(4):
+                    if k == my_index or k == i:
+                        continue
+                    if not playerHasSuit[k][total[shuffledPlayersCard[i][j][1]]]:
+                        continue
+                    for l in range(len(shuffledPlayersCard[k])):
+                        if playerHasSuit[i][total[shuffledPlayersCard[k][l][1]]]:
+                            temp = shuffledPlayersCard[i][j]
+                            shuffledPlayersCard[i][j] = shuffledPlayersCard[k][l]
+                            shuffledPlayersCard[k][l] = temp
+                            found = True
+                            break
+                    
+                    if found:
+                        break
+        i=(i+1)%4
+
+
     return shuffledPlayersCard
     
 
@@ -312,19 +340,29 @@ def pimc(body):
     playableMoves = playableActions(body)
     if(len(playableMoves) == 1):
         return playableMoves[0]
-    if(body["timeRemaining"] <=200):
+    if(body["timeRemaining"] <=100):
+        print(f"rN {rN}")
+        random.seed()
         return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    start_time = int(time()*1000)
-    current_time = start_time
-    pimcbound= 5
-    if body["roundNumber"] > 2:
-        pimcbound=3
+    pimcbound = 1
+    if rN==1:
+        pimcbound= 2
+    elif rN==2 or rN==3:
+        if body["trumpRevealed"]:
+            pimcbound= 2
+        else:
+            pimcbound= 4
+    elif rN==4 or rN==5:
+        pimcbound = 3
+    else:
+        pimcbound = 2
     while iter < pimcbound:
         tree = []
         iter+=1
         shuffledPlayersCard = shuffle(body)
+        print(shuffledPlayersCard)
         root = {}
         root["parent"] = -1
         root["playerId"] = findPlayerIndex(body["playerId"], body["playerIds"])
@@ -353,17 +391,17 @@ def pimc(body):
                 root["bidAmount"] = entry[1]
                 root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
         tree.append(root)
-        bound = 200
+        bound = 40
         
         if(rN >=7):
-            bound=50
+            bound=8
         elif(rN>=4):
-            bound=100
+            bound=30
 
         mcts(0, bound)
         for i in range(len(playableMoves)):
             preferred_move[i] += tree[tree[0]["children"][i]]["visitCount"]/tree[0]["visitCount"]
-
+            
     bestMove = 0
     
     for i in range(1,len(preferred_move)):

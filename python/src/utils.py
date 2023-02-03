@@ -86,9 +86,18 @@ def pick_winning_card_idx(cards, trump_suit):
 
     return winner
 
+def findPlayerIndex(playerId, playerIds):
+    for i in range(4):
+        if playerIds[i] == playerId:
+            return i
+    
+    return -1
+
 def playableActions(body):
     roundNumber = body["roundNumber"]
     currPlayer = body["playerId"]
+    if type(currPlayer) == str:
+        currPlayer = findPlayerIndex(currPlayer, body["playerIds"])
     currentHand = body["played"]
     trumpRevealed = body["trumpRevealed"]
     trumpSuit = body["trumpSuit"]
@@ -114,7 +123,8 @@ def playableActions(body):
 
         else:
             trump = trumpRevealed
-            if trump["hand"] == roundNumber and trump["playerId"] == currPlayer:
+            if trump["hand"] == roundNumber and trump["playerId"] == body["playerIds"][currPlayer]:
+                # print("I am the trump picker")
                 same_suit_cards = get_suit_cards(myCards, trumpSuit)
                 if len(same_suit_cards) != 0:
                     toPlay = same_suit_cards[0]
