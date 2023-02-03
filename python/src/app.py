@@ -20,19 +20,20 @@ if type(DEBUG) == str:DEBUG = int(DEBUG)
 app = Sanic(__name__)
 CORS(app)
 
-inbuilt_print = print
+#inbuilt_print = print
 
 def print(args):
     # only log to output if in debug mode
     # logging to console is farily expensive so, log only when necessary
-    if DEBUG:
-        inbuilt_print(args)
+    # if DEBUG:
+    #     inbuilt_print(args)
+    pass
 
 
 
 @app.route("/hi", methods=["GET"])
 def hi(request: Request):
-    print("Hit the endpoint. Sending hello...")
+    #print("Hit the endpoint. Sending hello...")
     return json({"value": "hello"})
 
 
@@ -63,7 +64,7 @@ def bid(request: Request):
     """
     
     body = request.json
-    print(body)
+    #print(body)
     
     return json(get_bid(body))
 
@@ -89,7 +90,7 @@ def choose_trump(request: Request):
     """
     
     body = request.json
-    print(body)
+    #print(body)
     
     return json(get_trump_suit(body))
 
@@ -137,7 +138,7 @@ def play(request: Request):
     """
     
     body = request.json
-    print(body)
+    #print(body)
     
     return json(get_play_card(body))
 

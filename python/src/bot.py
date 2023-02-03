@@ -20,6 +20,7 @@ from time import time
 
 tree = []
 
+
 def get_bid(body):
     """
     Please note: this is bare implementation of the bid function.
@@ -101,15 +102,18 @@ def calcUCT(node, parent):
     
 
 def select(root):
+    global tree
     selected = root
     while len(tree[selected]["children"]) != 0:
-        bestScore = -1.0
+        bestScore = float('-inf')
         bestChild = 0
         for child in tree[selected]["children"]:
             uctValue = calcUCT(child, selected)
+            #print("UCTValue", uctValue)
             if uctValue > bestScore:
                 bestScore = uctValue
                 bestChild = child
+        #print("BestChild",bestChild)
         selected = bestChild
 
     return selected
@@ -131,6 +135,7 @@ def winValue(currentHand):
     return value
 
 def createChildren(root):
+    global tree
     tree[root]["children"] = []
     possibleMoves = playableActions(tree[root])
     for move in possibleMoves:
@@ -183,43 +188,49 @@ def createChildren(root):
         tree[root]["children"].append(len(tree)-1)
 
 def backpropagate(root):
-    score = [1,1,1,1]
+    global tree
+    score = [0,0,0,0]
     bidPlayer = tree[root]["bidPlayer"]
     bidAmount = tree[root]["bidAmount"]
     trumpRevealed = tree[root]["trumpRevealed"]
     if trumpRevealed:
         if tree[root]["points"][bidPlayer] >= bidAmount:
-            score[bidPlayer] = score[(bidPlayer+2)%4] = 1000
-            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 0
+            score[bidPlayer] = score[(bidPlayer+2)%4] = 10000000 * (tree[root]["points"][bidPlayer])
+            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = -10000000 * (tree[root]["points"][bidPlayer])
         else:
-            score[bidPlayer] = score[(bidPlayer+2)%4] = 0
-            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 1000
+            score[bidPlayer] = score[(bidPlayer+2)%4] = - 10000000*(28 - tree[root]["points"][bidPlayer] + 1 )
+            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 10000000*(28 - tree[root]["points"][bidPlayer] + 1 )
+    #print("Score is", score)
     while root != -1:
         tree[root]["visitCount"] += 1
         for i in range(4):
             tree[root]["score"][i] += score[i]
         root = tree[root]["parent"]
 
-
 def simulate(root):
+    global tree
     currentNode = root
     createChildren(root)
-    while len(tree[currentNode]["children"])!=0 :
+    while len(tree[currentNode]["children"])!=0:
         currentNode = tree[currentNode]["children"][random.randint(0, len(tree[currentNode]["children"])-1)]
         createChildren(currentNode)
     backpropagate(currentNode)
 
 
 def mcts(root, bound):
+    
     iter = 0
-    start_time = int(time()*1000)
-    current_time = start_time
-    while current_time - start_time < bound:
-        selected = select(root)
-        simulate(selected)
+    while iter < bound:
+        #time_before_selection = int(time()*1000)
         iter+=1
-        current_time = int(time()*1000)
-    # print(f"mcts iter {iter}")
+        selected = select(root)
+        #time_after_selection = int(time()*1000)
+        #print("Time taken for selection", time_after_selection - time_before_selection)
+        simulate(selected)
+        #time_after_simulate= int(time()*1000)
+        #print("Time taken for simulation", time_after_simulate - time_after_selection)
+        
+    #print("Time taken for mcts" , current_time- start_time )
 
 def findPlayerIndex(playerId, playerIds):
     for i in range(4):
@@ -297,16 +308,23 @@ def shuffle(body):
 def pimc(body):
     global tree
     body["roundNumber"] = len(body["handsHistory"])+1
+    rN= body["roundNumber"]
     playableMoves = playableActions(body)
+    if(len(playableMoves) == 1):
+        return playableMoves[0]
+    if(body["timeRemaining"] <=200):
+        return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
     start_time = int(time()*1000)
     current_time = start_time
-    while current_time-start_time < 135:
+    pimcbound= 5
+    if body["roundNumber"] > 2:
+        pimcbound=3
+    while iter < pimcbound:
         tree = []
         iter+=1
         shuffledPlayersCard = shuffle(body)
-        # print(shuffledPlayersCard)
         root = {}
         root["parent"] = -1
         root["playerId"] = findPlayerIndex(body["playerId"], body["playerIds"])
@@ -334,21 +352,25 @@ def pimc(body):
             if entry[1] > 0:
                 root["bidAmount"] = entry[1]
                 root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
-  
         tree.append(root)
-        siz = 3*len(playableMoves)
-        bound = 40
+        bound = 200
+        
+        if(rN >=7):
+            bound=50
+        elif(rN>=4):
+            bound=100
 
         mcts(0, bound)
         for i in range(len(playableMoves)):
             preferred_move[i] += tree[tree[0]["children"][i]]["visitCount"]/tree[0]["visitCount"]
-        current_time = int(time()*1000)
-    # print(f"mcts iter {iter}")
 
     bestMove = 0
+    
     for i in range(1,len(preferred_move)):
         if preferred_move[i] > preferred_move[bestMove]:
             bestMove = i
+    # print("Move selected:",bestMove)
+    # print(preferred_move)
     return playableMoves[bestMove]
 
 def get_play_card(body):
@@ -357,10 +379,13 @@ def get_play_card(body):
     It just returns the last card that we have.
     Do make changes to the function to throw valid card according to the context of the game.
     """
-    # print(body)
+   
     ####################################
     #     Input your code here.        #
     ####################################
+    # file1=open('testFile.txt','a')
+    # file1.write("Game status: " + body["playerId"]+" "+ str(body["timeRemaining"] ) +"\n")
+    # file1.close()
     return pimc(body)
 
 
