@@ -26,16 +26,7 @@ def get_bid(body):
     Please note: this is bare implementation of the bid function.
     Do make changes to this function to throw valid bid according to the context of the game.
     """
-    myCards = body["cards"]
-    total={'S':0,'H':0, 'D':0, 'C':0}
-    for card in myCards:
-        total[card[1]]+=1
-    maxi = 0
-    suit = ''
-    for i in total.keys():
-        if total[i]>maxi :
-            maxi = total[i]
-            suit = i
+    
     
     amount = 0
     if(body["playerId"] == body["bidState"]["defenderId"]):
@@ -43,23 +34,47 @@ def get_bid(body):
     else:
         amount =  body["bidState"]["defenderBid"]+1
     
-    for entry in body["bidHistory"]:
-        amount = max(amount, entry[1])
-    value = 0
-    if maxi<=1:
-        value = 0
+    highestCountSuit = 0
+    highestValueSuit = 0
+    myCards = body["cards"]
+    totalPoints = winValue(myCards)
+    total={'S':0,'H':1, 'D':2, 'C':3}
+    suitCount = [0,0,0,0]
+    suitValue = [0,0,0,0]
+    suitHasJ  = [False, False, False, False]
+    getSuit = ['S', 'H', 'D', 'C']
+    for card in myCards:
+        suit = total[card[1]]
+        suitCount[suit]+=1
+        suitValue[suit]+=get_card_info(card)["points"]
+        suitHasJ[suit] = suitHasJ[suit] or card[0] == 'J'
+        if( suitCount[suit] > suitCount[highestCountSuit]):
+            highestCountSuit = suit
+        if(suitValue[suit] > suitValue[highestValueSuit]):
+            highestValueSuit = suit
+        
+    value=0
 
-    elif maxi <=2:
-        if amount <= 16:
-            value = max(amount, 16)
-        else :
-            value = 0
-    
-    elif maxi <=4:
-        if amount <= 17:
-            value = max(amount, 16)
-        else :
-            value = 0
+    if(suitCount[highestCountSuit] >=3):
+        if(suitValue[highestCountSuit] >= 4):
+            if amount <=19 and totalPoints >=6:
+                value = amount
+            elif amount <=18:
+                value=amount
+        else:
+            if amount <= 17:
+                value=amount
+    else:
+        if(suitValue[highestValueSuit] >=5):
+            if amount <=19 and value >=8:
+                value = amount
+            elif amount <=18:
+                value = amount
+        elif suitValue[highestValueSuit] >=4:
+            if amount <=17 and value >=7:
+                value = amount
+            elif amount <=16:
+                value=amount
 
     ####################################
     #     Input your code here.        #
@@ -73,16 +88,61 @@ def get_trump_suit(body):
     Please note: this is bare implementation of the chooseTrump function.
     Do make changes to this function to throw valid card according to the context of the game.
     """
+    amount = 0
+    for entry in body["bidHistory"]:
+        if entry[1] > 0:
+            amount = entry[1]
+    
+    highestCountSuit = 0
+    highestValueSuit = 0
     myCards = body["cards"]
-    total={'S':0,'H':0, 'D':0, 'C':0}
+    totalPoints = winValue(myCards)
+    total={'S':0,'H':1, 'D':2, 'C':3}
+    suitCount = [0,0,0,0]
+    suitValue = [0,0,0,0]
+    suitHasJ  = [False, False, False, False]
+    getSuit = ['S', 'H', 'D', 'C']
     for card in myCards:
-        total[card[1]]+=1
-    maxi = 0
-    suit = ''
-    for i in total.keys():
-        if total[i]>maxi :
-            maxi = total[i]
-            suit = i
+        suit = total[card[1]]
+        suitCount[suit]+=1
+        suitValue[suit]+=get_card_info(card)["points"]
+        suitHasJ[suit] = suitHasJ[suit] or card[0] == 'J'
+        if( suitCount[suit] > suitCount[highestCountSuit]):
+            highestCountSuit = suit
+        if(suitValue[suit] > suitValue[highestValueSuit]):
+            highestValueSuit = suit
+        
+    value=0
+
+    if(suitCount[highestCountSuit] >=3):
+        if(suitValue[highestCountSuit] >= 4):
+            if amount <=19 and totalPoints >=6:
+                return {"suit" : getSuit[highestCountSuit]}
+            elif amount <=18:
+                return {"suit" : getSuit[highestCountSuit]}
+        else:
+            if amount <= 17:
+                return {"suit" : getSuit[highestCountSuit]}
+    else:
+        if(suitValue[highestValueSuit] >=5):
+            if amount <=19 and value >=8:
+                return {"suit" : getSuit[highestValueSuit]}
+            elif amount <=18:
+                return {"suit" : getSuit[highestValueSuit]}
+        elif suitValue[highestValueSuit] >=4:
+            if amount <=17 and value >=7:
+                return {"suit" : getSuit[highestValueSuit]}
+            elif amount <=16:
+                return {"suit" : getSuit[highestValueSuit]}
+    
+    if(suitValue[highestValueSuit] >=3):
+        return {"suit" : getSuit[highestValueSuit]}
+    elif suitCount[highestCountSuit] >=2:
+        return {"suit" : getSuit[highestCountSuit]}
+    else:
+        return {"suit" : getSuit[highestValueSuit]}
+
+    
     ####################################
     #     Input your code here.        #
     ####################################
@@ -336,13 +396,12 @@ def pimc(body):
     # print(playableMoves)
     if(len(playableMoves) == 1):
         return playableMoves[0]
-    # if(body["timeRemaining"] <=100):
-    #     print(f"rN {rN}")
-    #     random.seed()
-    #     return playableMoves[random.randint(0,len(playableMoves)-1)]
+    if(body["timeRemaining"] <=100):
+        random.seed()
+        return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 2
+    pimcbound = 5
     # if rN<=6:
     #     pimcbound= 5
 
@@ -381,10 +440,13 @@ def pimc(body):
                 root["bidAmount"] = entry[1]
                 root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
         tree.append(root)
+        bound = 10
         if(rN <= 4):
+            bound = 55
+        elif(rN ==5):
+            bound = 45
+        elif rN == 6:
             bound = 35
-        elif(rN <=6):
-            bound = 25
         else:
             bound = 10
 
@@ -408,7 +470,6 @@ def createChildren2(root):
         if tree[root]["roundNumber"] != tree[tree[root]["parent"]]["roundNumber"]:
             return
     possibleMoves = playableActions(tree[root])
-    print(tree[root]["playerId"])
     for move in possibleMoves:
         child = {}
         child["parent"] = root
@@ -508,7 +569,7 @@ def pimc2(body):
     #     return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 3
+    pimcbound = 5
     
     while iter < pimcbound:
         tree = []
@@ -543,7 +604,7 @@ def pimc2(body):
         #         root["bidAmount"] = entry[1]
         #         root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
         tree.append(root)
-        bound = 20
+        bound = 40
 
         mcts2(0, bound)
         for i in range(len(playableMoves)):
@@ -573,7 +634,7 @@ def get_play_card(body):
     currentHand = body["played"]
     rN = body["roundNumber"]
     print(rN, body["playerId"], body["timeRemaining"])
-    if  not body["trumpRevealed"] and rN <= 3:
+    if  not body["trumpRevealed"] and rN <= 4:
         return pimc2(body)
     return pimc(body)
 

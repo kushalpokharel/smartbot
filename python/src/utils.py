@@ -346,7 +346,7 @@ def lastPlay(body):
 def firstRound(body):
     currentHand = body["played"]
     myCards = body["cards"]
-    print(myCards)
+    # print(myCards)
     trumpSuit = body["trumpSuit"]
     trumpRevealed = body["trumpRevealed"]
     turn = len(currentHand)
