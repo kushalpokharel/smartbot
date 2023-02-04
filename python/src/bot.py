@@ -56,7 +56,7 @@ def get_bid(body):
             value = 0
     
     elif maxi <=4:
-        if amount <= 18:
+        if amount <= 17:
             value = max(amount, 16)
         else :
             value = 0
@@ -96,7 +96,7 @@ def calcUCT(node, parent):
     #     return ((score[parent->currentPlayer]*1.0) / visitCount) + sqrt(2 * log(parent->visitCount) / visitCount);
     visitCount = tree[node]["visitCount"]
     if tree[node]["visitCount"] == 0:
-        return 100000000
+        return float('inf')
     else:
         return tree[node]["score"][tree[parent]["playerId"]] / visitCount + math.sqrt(2*math.log(tree[parent]["visitCount"]) / visitCount )  
     
@@ -114,6 +114,8 @@ def select(root):
                 bestScore = uctValue
                 bestChild = child
         #print("BestChild",bestChild)
+        # print("Select Status)")
+        # print(bestScore, bestChild)
         selected = bestChild
 
     return selected
@@ -340,7 +342,7 @@ def pimc(body):
     #     return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 5
+    pimcbound = 2
     # if rN<=6:
     #     pimcbound= 5
 
@@ -379,12 +381,12 @@ def pimc(body):
                 root["bidAmount"] = entry[1]
                 root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
         tree.append(root)
-        bound = 100
-        
-        # if(rN >=7):
-        #     bound=8
-        # elif(rN>=4):
-        #     bound=30
+        if(rN <= 4):
+            bound = 35
+        elif(rN <=6):
+            bound = 25
+        else:
+            bound = 10
 
         mcts(0, bound)
         for i in range(len(playableMoves)):
@@ -395,17 +397,18 @@ def pimc(body):
     for i in range(1,len(preferred_move)):
         if preferred_move[i] > preferred_move[bestMove]:
             bestMove = i
-    # print("Move selected:",bestMove)
-    # print(preferred_move)
+    
     return playableMoves[bestMove]
 
 def createChildren2(root):
     global tree
     tree[root]["children"] = []
+    #print("Inside Create Children")
     if tree[root]["parent"]!=-1:
         if tree[root]["roundNumber"] != tree[tree[root]["parent"]]["roundNumber"]:
             return
     possibleMoves = playableActions(tree[root])
+    print(tree[root]["playerId"])
     for move in possibleMoves:
         child = {}
         child["parent"] = root
@@ -435,15 +438,12 @@ def createChildren2(root):
             child["played"].append(move["card"])
             if len(child["played"]) == 4:
                 child["roundNumber"] = child["roundNumber"] + 1
-                
                 winner = pick_winning_card_idx(child["played"], False)
                 if child["trumpRevealed"]:
                     winner = pick_winning_card_idx(child["played"], child["trumpSuit"])
-                winner = (child["playerId"] + winner) % 4                
+                winner = (child["playerId"] + winner) % 4               
                 child["playerId"] = winner
                 value = winValue(child["played"])
-                child["points"][winner] += value
-                child["points"][(winner+2)%4] += value
             child["allCards"][tree[child["parent"]]["playerId"]].remove(move["card"])
             
         else:
@@ -494,7 +494,6 @@ def mcts2(root, bound):
         iter+=1
         selected = select2(root)
         simulate2(selected)
-        
 
 def pimc2(body):
     global tree
@@ -509,7 +508,7 @@ def pimc2(body):
     #     return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 20
+    pimcbound = 3
     
     while iter < pimcbound:
         tree = []
@@ -529,7 +528,6 @@ def pimc2(body):
         root["points"] = [0,0,0,0]
         root["children"] = []
         root["cards"] = body["cards"]
-
         # for i in range(4):
         #     for j in range(2):
         #         if body["teams"][j]["players"][0] == body["playerIds"][i] or body["teams"][j]["players"][1] == body["playerIds"][i]:
@@ -539,24 +537,24 @@ def pimc2(body):
         root["playerIds"] = body["playerIds"]
         # root["bidAmount"] = 0
         root["bidPlayer"] = (root["playerId"] - len(root["cards"])+4)%4
+        
         # for entry in body["bidHistory"]:
         #     if entry[1] > 0:
         #         root["bidAmount"] = entry[1]
         #         root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
         tree.append(root)
-        bound = 100
+        bound = 20
 
         mcts2(0, bound)
         for i in range(len(playableMoves)):
             preferred_move[i] += tree[tree[0]["children"][i]]["visitCount"]/tree[0]["visitCount"]
             
     bestMove = 0
-    
+   
     for i in range(1,len(preferred_move)):
         if preferred_move[i] > preferred_move[bestMove]:
             bestMove = i
-    # print("Move selected:",bestMove)
-    # print(preferred_move)
+    
     return playableMoves[bestMove]
 
 
@@ -574,22 +572,9 @@ def get_play_card(body):
     body["roundNumber"] = len(body["handsHistory"])+1
     currentHand = body["played"]
     rN = body["roundNumber"]
-    print(body["playerId"], body["timeRemaining"])
-
-    # if len(currentHand) == 3 and rN<=4:
-    #     move = lastPlay(body)
-    #     print(move)
-    #     return move
-    # if rN == 1:
-        
-    #     move =  firstRound(body)
-    #     print(move)
-    #     return move
-    
-    if rN==2 or rN==3:
+    print(rN, body["playerId"], body["timeRemaining"])
+    if  not body["trumpRevealed"] and rN <= 3:
         return pimc2(body)
-        
-    
     return pimc(body)
 
 

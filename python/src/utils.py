@@ -68,14 +68,13 @@ def is_high(highest_card, compare_card, trump_suit=None):
 
         return high["points"] >= compare["points"] and high["order"] > compare["order"]
 
-    return False
+    return True
 
 
 def pick_winning_card_idx(cards, trump_suit):
     winner = 0
     first_card = cards[0]
-
-    for i in range(winner, len(cards)):
+    for i in range(0, len(cards)):
         winning_card = cards[winner]
         compare_card = cards[i]
 
@@ -83,14 +82,12 @@ def pick_winning_card_idx(cards, trump_suit):
             continue
         if (not is_high(winning_card, compare_card, trump_suit)):
             winner = i
-
     return winner
 
 def findPlayerIndex(playerId, playerIds):
     for i in range(4):
         if playerIds[i] == playerId:
             return i
-    
     return -1
 
 def playableActions(body):
