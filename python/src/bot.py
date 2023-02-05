@@ -33,7 +33,7 @@ def get_bid(body):
         amount = body["bidState"]["challengerBid"]
     else:
         amount =  body["bidState"]["defenderBid"]+1
-    
+    amount = max(amount, 16)
     highestCountSuit = 0
     highestValueSuit = 0
     myCards = body["cards"]
@@ -75,6 +75,11 @@ def get_bid(body):
                 value = amount
             elif amount <=16:
                 value=amount
+
+        elif suitValue[highestValueSuit] >=3:
+            if amount <=17 :
+                value = amount
+            
 
     ####################################
     #     Input your code here.        #
@@ -253,11 +258,11 @@ def backpropagate(root):
     trumpRevealed = tree[root]["trumpRevealed"]
     if trumpRevealed:
         if tree[root]["points"][bidPlayer] >= bidAmount:
-            score[bidPlayer] = score[(bidPlayer+2)%4] = 10000000 * (tree[root]["points"][bidPlayer])
-            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = -10000000 * (tree[root]["points"][bidPlayer])
+            score[bidPlayer] = score[(bidPlayer+2)%4] = (tree[root]["points"][bidPlayer])/5
+            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = -(tree[root]["points"][bidPlayer])/5
         else:
-            score[bidPlayer] = score[(bidPlayer+2)%4] = -10000000*(28 - tree[root]["points"][bidPlayer] )
-            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = 10000000*(28 - tree[root]["points"][bidPlayer] )
+            score[bidPlayer] = score[(bidPlayer+2)%4] = -(28 - tree[root]["points"][bidPlayer] )/5
+            score[(bidPlayer+1)%4] = score[(bidPlayer+3)%4] = (28 - tree[root]["points"][bidPlayer] )/5
     #print("Score is", score)
     while root != -1:
         tree[root]["visitCount"] += 1
@@ -304,6 +309,8 @@ def shuffle(body):
     playerIds = body["playerIds"]
     myCards = body["cards"]
     currentPlayer = body["playerId"]
+    bidPlayer = body["bidPlayer"]
+    bidCards = []
     playerHasSuit = [[True for i in range(4)] for j in range(4)]
     remainingCards = []
     shuffled = []
@@ -328,6 +335,8 @@ def shuffle(body):
         lead_suit = h[1][0][1]
         for i in range(4):
             current_turn = (start+i)%4
+            if current_turn == bidPlayer:
+                bidCards.append(h[1][i])
             remainingCards.remove(h[1][i])
             if h[1][i][1] != lead_suit:
                 playerHasSuit[current_turn][total[lead_suit]] = False
@@ -385,8 +394,30 @@ def shuffle(body):
                         break
         i=(i+1)%4
 
-
-    return shuffledPlayersCard
+    for card in shuffledPlayersCard[bidPlayer]:
+        bidCards.append(card)
+    trumpSuit = body["trumpSuit"]
+    
+    if not trumpSuit:
+        total={'S':0,'H':1, 'D':2, 'C':3}
+        suitValue = [0,0,0,0]
+        getSuit = ['S', 'H', 'D', 'C']
+        totalValue = 0
+        for card in bidCards:
+            suit = total[card[1]]
+            suitValue[suit]+=get_card_info(card)["points"]+1
+            totalValue = totalValue + get_card_info(card)["points"] + 1
+        for i in range(4):
+            suitValue[i] = suitValue[i]/totalValue
+        random.seed()
+        rand = random.random()
+        trumpSuit = getSuit[3]
+        for i in range(4):
+            if rand < suitValue[i]:
+                trumpSuit = getSuit[i]
+                break
+            rand-=suitValue[i]
+    return shuffledPlayersCard, trumpSuit
     
 
 def pimc(body):
@@ -396,28 +427,33 @@ def pimc(body):
     # print(playableMoves)
     if(len(playableMoves) == 1):
         return playableMoves[0]
-    if(body["timeRemaining"] <=100):
+    if(body["timeRemaining"] <=200):
+        print("time remaining is less than 200")
         random.seed()
         return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 5
+    pimcbound = 4
     # if rN<=6:
     #     pimcbound= 5
 
     # else:
     #     pimcbound = 2
+    body["bidAmount"] = 0
+    body["bidPlayer"] = -1
+    for entry in body["bidHistory"]:
+        if entry[1] > 0:
+            body["bidAmount"] = entry[1]
+            body["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
     while iter < pimcbound:
         tree = []
         iter+=1
-        shuffledPlayersCard = shuffle(body)
         # print(shuffledPlayersCard)
         root = {}
+        root["allCards"], root["trumpSuit"] = shuffle(body)
         root["parent"] = -1
         root["playerId"] = findPlayerIndex(body["playerId"], body["playerIds"])
         root["played"] = body["played"]
-        root["allCards"] = shuffledPlayersCard
-        root["trumpSuit"] = body["trumpSuit"]
         root["trumpRevealed"] = body["trumpRevealed"]
         root["roundNumber"] = body["roundNumber"]
         root["visitCount"] = 0
@@ -425,7 +461,8 @@ def pimc(body):
         root["points"] = [0,0,0,0]
         root["children"] = []
         root["cards"] = body["cards"]
-
+        root["bidAmount"] = body["bidAmount"]
+        root["bidPlayer"] = body["bidPlayer"]
         for i in range(4):
             for j in range(2):
                 if body["teams"][j]["players"][0] == body["playerIds"][i] or body["teams"][j]["players"][1] == body["playerIds"][i]:
@@ -433,22 +470,17 @@ def pimc(body):
                     
 
         root["playerIds"] = body["playerIds"]
-        root["bidAmount"] = 0
-        root["bidPlayer"] = -1
-        for entry in body["bidHistory"]:
-            if entry[1] > 0:
-                root["bidAmount"] = entry[1]
-                root["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
+        
         tree.append(root)
         bound = 10
         if(rN <= 4):
-            bound = 55
+            bound = 30
         elif(rN ==5):
-            bound = 45
+            bound = 20
         elif rN == 6:
-            bound = 35
-        else:
             bound = 10
+        else:
+            bound = 5
 
         mcts(0, bound)
         for i in range(len(playableMoves)):
@@ -528,8 +560,8 @@ def backpropagate2(root):
     #     winner = pick_winning_card_idx(tree[root]["played"], tree[root]["trumpSuit"])
     # winner = (winner + tree[root]["playerId"])%4
     amount = winValue(tree[root]["played"])
-    score[winner] = score[(winner+2)%4] = 100000000*amount
-    score[(winner+1)%4] = score[(winner+3)%4] = -100000000*amount
+    score[winner] = score[(winner+2)%4] = amount
+    score[(winner+1)%4] = score[(winner+3)%4] = -amount
     while root != -1:
         tree[root]["visitCount"] += 1
         for i in range(4):
@@ -567,6 +599,12 @@ def pimc2(body):
     #     print(f"rN {rN}")
     #     random.seed() 
     #     return playableMoves[random.randint(0,len(playableMoves)-1)]
+    body["bidAmount"] = 0
+    body["bidPlayer"] = -1
+    for entry in body["bidHistory"]:
+        if entry[1] > 0:
+            body["bidAmount"] = entry[1]
+            body["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
     pimcbound = 5
@@ -574,14 +612,12 @@ def pimc2(body):
     while iter < pimcbound:
         tree = []
         iter+=1
-        shuffledPlayersCard = shuffle(body)
         # print(shuffledPlayersCard)
         root = {}
         root["parent"] = -1
         root["playerId"] = findPlayerIndex(body["playerId"], body["playerIds"])
+        root["allCards"], root["trumpSuit"] = shuffle(body)
         root["played"] = body["played"]
-        root["allCards"] = shuffledPlayersCard
-        root["trumpSuit"] = body["trumpSuit"]
         root["trumpRevealed"] = body["trumpRevealed"]
         root["roundNumber"] = body["roundNumber"]
         root["visitCount"] = 0
@@ -631,11 +667,11 @@ def get_play_card(body):
     #     Input your code here.        #
     ####################################
     body["roundNumber"] = len(body["handsHistory"])+1
-    currentHand = body["played"]
-    rN = body["roundNumber"]
-    print(rN, body["playerId"], body["timeRemaining"])
-    if  not body["trumpRevealed"] and rN <= 4:
-        return pimc2(body)
+    # currentHand = body["played"]
+    # rN = body["roundNumber"]
+    # print(rN, body["playerId"], body["timeRemaining"])
+    # if  not body["trumpRevealed"] and rN <= 3:
+    #     return pimc2(body)
     return pimc(body)
 
 
