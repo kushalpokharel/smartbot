@@ -281,10 +281,13 @@ def simulate(root):
     backpropagate(currentNode)
 
 
-def mcts(root, bound):
+def mcts(root, bound, timeLimit):
     
     iter = 0
-    while iter < bound:
+    startTime = int(time.time()*1000)
+    endTime = startTime
+    mctsTimeLimit = int(timeLimit/3)
+    while endTime-startTime < mctsTimeLimit:
         #time_before_selection = int(time()*1000)
         iter+=1
         selected = select(root)
@@ -293,8 +296,8 @@ def mcts(root, bound):
         simulate(selected)
         #time_after_simulate= int(time()*1000)
         #print("Time taken for simulation", time_after_simulate - time_after_selection)
-        
-    #print("Time taken for mcts" , current_time- start_time )
+        endTime = int(time.time()*1000)
+    print("Iteration taken for mcts" , iter)
 
 def findPlayerIndex(playerId, playerIds):
     for i in range(4):
@@ -433,19 +436,28 @@ def pimc(body):
         return playableMoves[random.randint(0,len(playableMoves)-1)]
     iter = 0
     preferred_move = [0.0]*len(playableMoves)
-    pimcbound = 4
-    # if rN<=6:
-    #     pimcbound= 5
-
-    # else:
-    #     pimcbound = 2
+    if body["timeRemaining"] <400:
+        pimcbound =2 
+    timeLimit = min(body["timeRemaining"]-5, 50)
+    pimcbound = 3
+    if rN<=3:
+        pimcbound= 5
+        timeLimit = 225
+    elif rN<=5:
+        timeLimit = 150
+    elif rN<=7:
+        timeLimit = 100
+    else:
+        pimcbound = 2
     body["bidAmount"] = 0
     body["bidPlayer"] = -1
     for entry in body["bidHistory"]:
         if entry[1] > 0:
             body["bidAmount"] = entry[1]
             body["bidPlayer"] = findPlayerIndex(entry[0], body["playerIds"])
-    while iter < pimcbound:
+    startTime = int(time.time()*1000)
+    endTime = startTime
+    while endTime - startTime < timeLimit:
         tree = []
         iter+=1
         # print(shuffledPlayersCard)
@@ -474,19 +486,22 @@ def pimc(body):
         tree.append(root)
         bound = 10
         if(rN <= 4):
-            bound = 30
+            bound = 50
         elif(rN ==5):
-            bound = 20
+            bound = 40
         elif rN == 6:
-            bound = 10
+            bound = 30
         else:
-            bound = 5
+            bound = 10
 
-        mcts(0, bound)
+        mcts(0, bound, timeLimit)
         for i in range(len(playableMoves)):
             preferred_move[i] += tree[tree[0]["children"][i]]["visitCount"]/tree[0]["visitCount"]
+        
+        endTime = int(time.time()*1000)
             
     bestMove = 0
+    print("Pimc Iteration: ", iter)
     
     for i in range(1,len(preferred_move)):
         if preferred_move[i] > preferred_move[bestMove]:
